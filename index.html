@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abhinav Gyawali — Commercial Pilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0e14;
+    --panel: #0e1420;
+    --panel-2: #0c111b;
+    --line: #1e2634;
+    --green: #3ddc84;
+    --green-dim: rgba(61,220,132,0.35);
+    --amber: #e8a33d;
+    --text: #e7eaee;
+    --text-dim: #8b95a5;
+    --text-faint: #4c5566;
+    --radius: 2px;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  ::selection{ background:var(--green-dim); color:var(--text); }
+
+  a{ color:inherit; text-decoration:none; }
+
+  /* ---------- GLOBAL RADAR BACKGROUND ---------- */
+  .global-radar{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .global-radar svg{
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:135vmax;
+    height:135vmax;
+    transform:translate(-50%,-50%);
+    opacity:0.16;
+  }
+  .g-sweep{ transform-origin:500px 500px; animation:sweep 7s linear infinite; }
+
+  .page-content{ position:relative; z-index:1; }
+  header.nav{ z-index:50; }
+
+  .route-overlay{
+    position:absolute;
+    inset:0;
+    z-index:5;
+    pointer-events:none;
+    overflow:visible;
+  }
+  .route-overlay svg{ display:block; width:100%; height:100%; overflow:visible; }
+  .route-overlay .route-path{ stroke:var(--text-faint); opacity:0.4; }
+  .route-overlay .waypoint circle{ fill:var(--bg); stroke:var(--text-dim); stroke-width:1.4; }
+  .route-overlay .waypoint.active circle{ stroke:var(--green); }
+  .route-overlay .waypoint-badge{ fill:var(--bg); stroke:var(--line); stroke-width:1; opacity:0.95; }
+  .route-overlay .waypoint text{
+    font-size:12px;
+    fill:var(--text);
+    font-weight:500;
+  }
+  .route-overlay .waypoint.active text{ fill:var(--green); }
+
+  /* Airplane HUD readout that tracks the plane across the whole page */
+  .plane-hud{
+    position:fixed;
+    z-index:60;
+    transform:translate(-50%, -100%);
+    pointer-events:none;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    line-height:1.5;
+    color:var(--green);
+    background:rgba(10,14,20,0.9);
+    border:1px solid var(--green-dim);
+    padding:6px 9px;
+    white-space:nowrap;
+    opacity:0;
+    transition:opacity .25s ease;
+  }
+  .plane-hud.visible{ opacity:1; }
+  .plane-hud .hud-route{
+    color:var(--text);
+    font-weight:500;
+    margin-bottom:3px;
+    letter-spacing:0.03em;
+  }
+  .plane-hud .hud-row span{ color:var(--amber); }
+
+  @media (prefers-reduced-motion: reduce){
+    .plane-hud{ display:none; }
+  }
+
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+
+  .wrap{
+    max-width:1080px;
+    margin:0 auto;
+    padding:0 32px;
+  }
+
+  /* ---------- NAV ---------- */
+  header.nav{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:rgba(10,14,20,0.86);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{
+    max-width:1080px;
+    margin:0 auto;
+    padding:16px 32px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .nav-mark{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    letter-spacing:0.06em;
+    color:var(--text);
+  }
+  .nav-mark span{ color:var(--green); }
+  .nav-links{
+    display:flex;
+    gap:28px;
+    list-style:none;
+  }
+  .nav-links a{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    transition:color .2s ease;
+  }
+  .nav-links a:hover{ color:var(--green); }
+  @media (max-width:640px){ .nav-links{ display:none; } }
+
+  /* ---------- HERO / RADAR ---------- */
+  .hero{
+    position:relative;
+    border-bottom:1px solid var(--line);
+    overflow:hidden;
+  }
+  .hero-grid{
+    max-width:1080px;
+    margin:0 auto;
+    padding:56px 32px 0;
+    position:relative;
+    z-index:2;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--green);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:6px; height:6px;
+    background:var(--green);
+    border-radius:50%;
+    box-shadow:0 0 8px var(--green);
+    animation:pulse-dot 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse-dot{
+    0%,100%{ opacity:1; }
+    50%{ opacity:.25; }
+  }
+
+  h1.name{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:clamp(40px, 8vw, 76px);
+    letter-spacing:-0.01em;
+    margin-top:14px;
+    line-height:1.02;
+  }
+  .title-line{
+    margin-top:14px;
+    font-size:17px;
+    color:var(--text-dim);
+    max-width:520px;
+  }
+  .title-line strong{ color:var(--text); font-weight:500; }
+
+  .contact-strip{
+    margin-top:28px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:24px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--text-dim);
+  }
+  .contact-strip a{ border-bottom:1px solid transparent; transition:border-color .2s, color .2s; }
+  .contact-strip a:hover{ color:var(--green); border-color:var(--green); }
+
+  /* Waypoint & plane styling (shared by full-page route overlay) */
+  .radar-cross{ stroke:var(--line); stroke-width:1; }
+  .sweep-group{ transform-origin:500px 250px; animation:sweep 6s linear infinite; }
+  @keyframes sweep{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
+
+  .route-path{
+    fill:none;
+    stroke:var(--text-faint);
+    stroke-width:1.4;
+    stroke-dasharray:4 6;
+  }
+  .waypoint circle{ fill:var(--panel); stroke:var(--text-dim); stroke-width:1.4; }
+  .waypoint.active circle{ stroke:var(--green); }
+  .waypoint text{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    fill:var(--text-dim);
+    letter-spacing:0.06em;
+  }
+  .waypoint.active text{ fill:var(--green); }
+
+  .blip{ fill:var(--green); }
+  .blip-pulse{
+    fill:none;
+    stroke:var(--green);
+    stroke-width:1.5;
+    animation:blip-expand 2.2s ease-out infinite;
+    transform-origin:center;
+  }
+  @keyframes blip-expand{
+    0%{ r:3; opacity:0.9; }
+    100%{ r:20; opacity:0; }
+  }
+
+  .plane-icon{ fill:var(--green); }
+
+  @media (prefers-reduced-motion: reduce){
+    .sweep-group, .g-sweep, .blip-pulse, .eyebrow::before{ animation:none !important; }
+  }
+
+  /* ---------- SECTIONS ---------- */
+  section{
+    padding:76px 0;
+    border-bottom:1px solid var(--line);
+  }
+  section:last-of-type{ border-bottom:none; }
+
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    gap:16px;
+    margin-bottom:36px;
+  }
+  .section-tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--green);
+    white-space:nowrap;
+  }
+  .section-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:26px;
+  }
+  .section-rule{
+    flex:1;
+    height:1px;
+    background:var(--line);
+  }
+
+  /* Profile */
+  .profile-text{
+    max-width:660px;
+    font-size:16px;
+    color:var(--text-dim);
+  }
+  .profile-text p + p{ margin-top:16px; }
+  .profile-text strong{ color:var(--text); font-weight:500; }
+
+  /* Credentials grid */
+  .cred-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    border:1px solid var(--line);
+    background:var(--bg);
+  }
+  .cred-cell{
+    padding:22px 22px;
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .cred-grid .cred-cell:nth-child(3n){ border-right:none; }
+  .cred-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+  }
+  .cred-value{
+    margin-top:8px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:26px;
+    font-weight:600;
+  }
+  .cred-value .unit{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--amber);
+    font-weight:400;
+    margin-left:4px;
+  }
+  .cred-sub{
+    margin-top:6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--text-dim);
+  }
+  @media (max-width:720px){
+    .cred-grid{ grid-template-columns:repeat(2,1fr); }
+    .cred-grid .cred-cell:nth-child(3n){ border-right:1px solid var(--line); }
+    .cred-grid .cred-cell:nth-child(2n){ border-right:none; }
+    .type-cell{ grid-column: span 2 !important; }
+  }
+
+  .type-chips{
+    margin-top:12px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .type-chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    letter-spacing:0.04em;
+    color:var(--text-dim);
+    background:transparent;
+    border:1px solid var(--line);
+    padding:7px 14px;
+    cursor:pointer;
+    transition:border-color .18s ease, color .18s ease, background .18s ease;
+  }
+  .type-chip:hover{ border-color:var(--text-dim); color:var(--text); }
+  .type-chip.active{
+    color:var(--green);
+    border-color:var(--green);
+    background:rgba(61,220,132,0.06);
+  }
+  .type-detail{
+    margin-top:16px;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+    min-height:24px;
+  }
+  .type-detail-placeholder{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--text-faint);
+  }
+  .type-detail-name{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:15px;
+    font-weight:600;
+    margin-bottom:10px;
+  }
+  .type-detail-row{
+    display:flex;
+    justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--text-dim);
+    padding:5px 0;
+    border-bottom:1px dashed var(--line);
+  }
+  .type-detail-row:last-child{ border-bottom:none; }
+  .type-detail-row span:last-child{ color:var(--amber); }
+
+  /* Certifications */
+  .cert-list{ border-top:1px solid var(--line); background:var(--bg); }
+  .cert-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:18px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .cert-main{ display:flex; align-items:center; gap:14px; }
+  .cert-stamp{
+    width:26px; height:26px;
+    flex:0 0 auto;
+    border:1px solid var(--green);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .cert-stamp svg{ width:12px; height:12px; }
+  .cert-name{ font-size:15px; font-weight:500; }
+  .cert-issuer{ font-size:12.5px; color:var(--text-dim); margin-top:2px; }
+  .cert-code{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--text-faint);
+    white-space:nowrap;
+  }
+
+  /* Education timeline */
+  .edu-item{
+    display:grid;
+    grid-template-columns:110px 1fr;
+    gap:24px;
+    padding:20px 0;
+    border-bottom:1px solid var(--line);
+    background:var(--bg);
+  }
+  .edu-item:last-child{ border-bottom:none; }
+  .edu-year{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--amber);
+  }
+  .edu-school{ font-family:'Space Grotesk', sans-serif; font-size:17px; font-weight:600; }
+  .edu-meta{ margin-top:6px; font-size:13.5px; color:var(--text-dim); }
+  .edu-meta span + span::before{ content:"·"; margin:0 8px; color:var(--text-faint); }
+
+  /* Contact / footer */
+  .contact-section{ padding-bottom:0; }
+  .contact-panel{
+    border:1px solid var(--line);
+    background:var(--bg);
+    padding:40px 32px;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    gap:32px;
+  }
+  .contact-lead{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:24px;
+    font-weight:600;
+    max-width:420px;
+    line-height:1.25;
+  }
+  .contact-lead span{ color:var(--green); }
+  .contact-details{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+  }
+  .contact-details a{ color:var(--text-dim); transition:color .2s; }
+  .contact-details a:hover{ color:var(--green); }
+  .contact-details .row-label{ color:var(--text-faint); margin-right:10px; display:inline-block; width:56px; }
+
+  footer{
+    padding:24px 32px;
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--text-faint);
+    letter-spacing:0.04em;
+  }
+</style>
+</head>
+<body>
+
+<div class="global-radar" aria-hidden="true">
+  <svg viewBox="0 0 1000 1000">
+    <circle class="radar-ring" cx="500" cy="500" r="140"></circle>
+    <circle class="radar-ring" cx="500" cy="500" r="270"></circle>
+    <circle class="radar-ring" cx="500" cy="500" r="400"></circle>
+    <circle class="radar-ring" cx="500" cy="500" r="490"></circle>
+    <line class="radar-cross" x1="500" y1="10" x2="500" y2="990"></line>
+    <line class="radar-cross" x1="10" y1="500" x2="990" y2="500"></line>
+    <g class="g-sweep">
+      <defs>
+        <linearGradient id="gSweepGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#3ddc84" stop-opacity="0"></stop>
+          <stop offset="100%" stop-color="#3ddc84" stop-opacity="0.5"></stop>
+        </linearGradient>
+      </defs>
+      <path d="M500,500 L500,10 A490,490 0 0,1 847,153 Z" fill="url(#gSweepGrad)"></path>
+    </g>
+  </svg>
+</div>
+
+<div class="page-content">
+
+<div class="route-overlay" aria-hidden="true">
+  <svg id="routeSvg" role="img" aria-label="Flight route across the page through VNBW, VNKT, FAOR, FAGC, FALA, FAWB, FABL, FAEL, FAVG, FAGG, FAWB, FAKN"></svg>
+</div>
+<div class="plane-hud" id="planeHud" aria-hidden="true"></div>
+
+<header class="nav">
+  <div class="nav-inner">
+    <div class="nav-mark">AG<span>·</span>CPL</div>
+    <ul class="nav-links">
+      <li><a href="#profile">Profile</a></li>
+      <li><a href="#credentials">Credentials</a></li>
+      <li><a href="#certifications">Certifications</a></li>
+      <li><a href="#education">Education</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-grid">
+    <div class="eyebrow">Commercial Pilot · Frozen ATPL</div>
+    <h1 class="name">Abhinav<br>Gyawali</h1>
+    <p class="title-line">SACAA CPL holder trained at <strong>Lanseria Flight Centre, South Africa</strong> — 204 total hours across single and multi-engine aircraft, building toward line-ready standard on a frozen ATPL.</p>
+    <div class="contact-strip">
+      <a href="mailto:abhinavgyawali.work@gmail.com">abhinavgyawali.work@gmail.com</a>
+      <a href="tel:+9779847025627">+977 984&#8209;702&#8209;5627</a>
+      <span>Butwal, Nepal</span>
+    </div>
+  </div>
+
+</section>
+
+<section id="profile">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">Profile</span>
+      <div class="section-rule"></div>
+    </div>
+    <div class="profile-text">
+      <p>Safety-conscious commercial pilot with flight training completed at <strong>Lanseria Flight Centre</strong>, South Africa, covering aviation regulations, flight planning, navigation, aircraft systems, meteorology and crew resource management.</p>
+      <p>Comfortable operating under normal and non-normal conditions, with training across single-engine piston, complex retractable-gear, and multi-engine platforms. Holds a <strong>South African CPL with frozen ATPL</strong>, ICAO English Proficiency Level 6, and a Class 1 medical certificate.</p>
+    </div>
+  </div>
+</section>
+
+<section id="credentials">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">Flight Credentials</span>
+      <div class="section-rule"></div>
+    </div>
+    <div class="cred-grid">
+      <div class="cred-cell">
+        <div class="cred-label">Total Hours</div>
+        <div class="cred-value">204.0<span class="unit">HR</span></div>
+      </div>
+      <div class="cred-cell">
+        <div class="cred-label">Pilot In Command</div>
+        <div class="cred-value">100.2<span class="unit">HR</span></div>
+      </div>
+      <div class="cred-cell">
+        <div class="cred-label">Night PIC</div>
+        <div class="cred-value">36.5<span class="unit">HR</span></div>
+      </div>
+      <div class="cred-cell">
+        <div class="cred-label">Cross Country PIC</div>
+        <div class="cred-value">91.0<span class="unit">HR</span></div>
+      </div>
+      <div class="cred-cell">
+        <div class="cred-label">Instrument Time</div>
+        <div class="cred-value">45.84<span class="unit">HR</span></div>
+        <div class="cred-sub">FSTD 24.54 · Actual 21.3</div>
+      </div>
+      <div class="cred-cell">
+        <div class="cred-label">Multi Engine</div>
+        <div class="cred-value">7.3<span class="unit">HR</span></div>
+      </div>
+      <div class="cred-cell">
+        <div class="cred-label">Licence No.</div>
+        <div class="cred-value" style="font-family:'IBM Plex Mono',monospace; font-size:19px;">0275514931</div>
+      </div>
+      <div class="cred-cell type-cell" style="grid-column: span 2;">
+        <div class="cred-label">Type Ratings — select to view hours</div>
+        <div class="type-chips">
+          <button class="type-chip" data-type="c172" type="button">C172</button>
+          <button class="type-chip" data-type="c72r" type="button">C72R</button>
+          <button class="type-chip" data-type="da42" type="button">DA42</button>
+        </div>
+        <div class="type-detail" id="typeDetail">
+          <div class="type-detail-placeholder">Select an aircraft to view logged hours</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="certifications">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">Certifications</span>
+      <div class="section-rule"></div>
+    </div>
+    <div class="cert-list">
+
+      <div class="cert-row">
+        <div class="cert-main">
+          <div class="cert-stamp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--green)"><path d="M4 12l5 5L20 6"/></svg>
+          </div>
+          <div>
+            <div class="cert-name">Commercial Pilot Licence</div>
+            <div class="cert-issuer">South African Civil Aviation Authority · Multi-engine &amp; instrument rated</div>
+          </div>
+        </div>
+        <div class="cert-code">SACAA · CPL</div>
+      </div>
+
+      <div class="cert-row">
+        <div class="cert-main">
+          <div class="cert-stamp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--green)"><path d="M4 12l5 5L20 6"/></svg>
+          </div>
+          <div>
+            <div class="cert-name">ICAO English Proficiency</div>
+            <div class="cert-issuer">Level 6 — Expert</div>
+          </div>
+        </div>
+        <div class="cert-code">LVL 6</div>
+      </div>
+
+      <div class="cert-row">
+        <div class="cert-main">
+          <div class="cert-stamp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--green)"><path d="M4 12l5 5L20 6"/></svg>
+          </div>
+          <div>
+            <div class="cert-name">Class 1 Medical Certificate</div>
+            <div class="cert-issuer">South African Civil Aviation Authority</div>
+          </div>
+        </div>
+        <div class="cert-code">SACAA</div>
+      </div>
+
+      <div class="cert-row">
+        <div class="cert-main">
+          <div class="cert-stamp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--green)"><path d="M4 12l5 5L20 6"/></svg>
+          </div>
+          <div>
+            <div class="cert-name">Night Rating</div>
+            <div class="cert-issuer">Lanseria Flight Center</div>
+          </div>
+        </div>
+        <div class="cert-code">NGT</div>
+      </div>
+
+      <div class="cert-row">
+        <div class="cert-main">
+          <div class="cert-stamp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--green)"><path d="M4 12l5 5L20 6"/></svg>
+          </div>
+          <div>
+            <div class="cert-name">Frozen ATPL</div>
+            <div class="cert-issuer">Lanseria Flight Center</div>
+          </div>
+        </div>
+        <div class="cert-code">ATPL(f)</div>
+      </div>
+
+      <div class="cert-row">
+        <div class="cert-main">
+          <div class="cert-stamp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--green)"><path d="M4 12l5 5L20 6"/></svg>
+          </div>
+          <div>
+            <div class="cert-name">CAALOP</div>
+            <div class="cert-issuer">Civil Aviation Authority of Nepal</div>
+          </div>
+        </div>
+        <div class="cert-code">CAAN</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="education">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">Education</span>
+      <div class="section-rule"></div>
+    </div>
+
+    <div class="edu-item">
+      <div class="edu-year">2020 – 2021</div>
+      <div>
+        <div class="edu-school">Trinity International SS and College</div>
+        <div class="edu-meta">
+          <span>Dillibazar, Kathmandu</span>
+          <span>Grade 11 — GPA 2.94</span>
+          <span>Grade 12 — GPA 3.01</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="edu-item">
+      <div class="edu-year">2019</div>
+      <div>
+        <div class="edu-school">New Horizon Higher Secondary School</div>
+        <div class="edu-meta">
+          <span>Kalikanagar, Butwal</span>
+          <span>SEE — GPA 3.06</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="contact" class="contact-section">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-tag">Contact</span>
+      <div class="section-rule"></div>
+    </div>
+    <div class="contact-panel">
+      <div class="contact-lead">Based in Butwal, Nepal — <span>open to first-officer and instructing routes.</span></div>
+      <div class="contact-details">
+        <div><span class="row-label">EMAIL</span><a href="mailto:abhinavgyawali.work@gmail.com">abhinavgyawali.work@gmail.com</a></div>
+        <div><span class="row-label">PHONE</span><a href="tel:+9779847025627">+977 9847025627</a></div>
+        <div><span class="row-label">BASE</span><span>Butwal, Nepal</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>© Abhinav Gyawali 2026</footer>
+
+</div>
+
+<script>
+  var routeCodes = ["VNBW","VNKT","FAOR","FAGC","FALA","FAWB","FABL","FAEL","FAVG","FAGG","FAWB","FAKN"];
+  var FLIGHT_DUR = 480; // seconds for one full loop across every leg — slow ambient pace
+  var CONTENT_MAX_W = 1080; // must match .wrap max-width in CSS
+  var routeState = { pts: [], startTime: null, legTimeMs: [], cumTimeMs: [] };
+
+  // Cruise altitudes per leg, cycling through a plausible GA training range (feet)
+  var legAltitudes = [4500, 5500, 6500, 7500, 6500, 5500, 7500, 8500, 6500, 5500, 4500];
+  var legSpeed = 112; // knots, steady cruise groundspeed for the readout
+
+  function buildRoute(){
+    var overlay = document.querySelector('.route-overlay');
+    var svg = document.getElementById('routeSvg');
+    if(!overlay || !svg) return;
+
+    var W = overlay.clientWidth;
+    var H = overlay.clientHeight;
+    if(!W || !H) return;
+
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('width', W);
+    svg.setAttribute('height', H);
+
+    // Keep the route inside the side gutters, clear of the centered text column,
+    // so waypoint labels never sit on top of page copy.
+    var contentEdge = Math.max(0, (W - CONTENT_MAX_W) / 2); // width of real gutter, if any
+    var showLabels = W >= 560;
+    var leftX, rightX;
+    if(contentEdge > 90){
+      leftX = contentEdge * 0.42;
+      rightX = W - contentEdge * 0.42;
+    } else {
+      leftX = Math.min(20, W * 0.05);
+      rightX = W - Math.min(20, W * 0.05);
+    }
+
+    var n = routeCodes.length;
+    var topMargin = H * 0.03;
+    var usableH = H * 0.94;
+    var pts = [];
+    for(var i = 0; i < n; i++){
+      pts.push({
+        x: (i % 2 === 0) ? leftX : rightX,
+        y: topMargin + usableH * ((i + 0.5) / n),
+        code: routeCodes[i]
+      });
+    }
+    routeState.pts = pts;
+
+    var d = 'M' + pts[0].x.toFixed(1) + ',' + pts[0].y.toFixed(1);
+    for(var i = 1; i < pts.length; i++){
+      if(i === 1){
+        var mx = (pts[0].x + pts[1].x) / 2;
+        var my = (pts[0].y + pts[1].y) / 2;
+        d += ' Q' + mx.toFixed(1) + ',' + my.toFixed(1) + ' ' + pts[1].x.toFixed(1) + ',' + pts[1].y.toFixed(1);
+      } else {
+        d += ' T' + pts[i].x.toFixed(1) + ',' + pts[i].y.toFixed(1);
+      }
+    }
+
+    var svgNS = 'http://www.w3.org/2000/svg';
+    while(svg.firstChild){ svg.removeChild(svg.firstChild); }
+
+    var path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('id', 'fullRoute');
+    path.setAttribute('class', 'route-path');
+    path.setAttribute('d', d);
+    svg.appendChild(path);
+
+    pts.forEach(function(p, i){
+      var isLast = i === pts.length - 1;
+      var onLeft = p.x === leftX;
+      var g = document.createElementNS(svgNS, 'g');
+      g.setAttribute('class', 'waypoint' + (isLast ? ' active' : ''));
+
+      var c = document.createElementNS(svgNS, 'circle');
+      c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', isLast ? 5 : 4.5);
+      g.appendChild(c);
+
+      if(isLast){
+        var pulse = document.createElementNS(svgNS, 'circle');
+        pulse.setAttribute('class', 'blip-pulse');
+        pulse.setAttribute('cx', p.x); pulse.setAttribute('cy', p.y); pulse.setAttribute('r', 3);
+        g.appendChild(pulse);
+      }
+
+      if(showLabels){
+        var textY = onLeft ? p.y - 14 : p.y + 22;
+        var textAnchor = onLeft ? (contentEdge > 90 ? 'middle' : 'start') : (contentEdge > 90 ? 'middle' : 'end');
+        var badgeW = p.code.length * 7.2 + 12;
+        var badgeX = textAnchor === 'start' ? p.x - 6 : (textAnchor === 'end' ? p.x - badgeW + 6 : p.x - badgeW / 2);
+        var textX = textAnchor === 'start' ? p.x : (textAnchor === 'end' ? p.x : p.x);
+
+        var badge = document.createElementNS(svgNS, 'rect');
+        badge.setAttribute('class', 'waypoint-badge');
+        badge.setAttribute('x', badgeX);
+        badge.setAttribute('y', textY - 12);
+        badge.setAttribute('width', badgeW);
+        badge.setAttribute('height', 16);
+        badge.setAttribute('rx', 2);
+        g.appendChild(badge);
+
+        var t = document.createElementNS(svgNS, 'text');
+        t.setAttribute('x', textX);
+        t.setAttribute('y', textY);
+        t.setAttribute('text-anchor', textAnchor);
+        t.textContent = p.code;
+        g.appendChild(t);
+      }
+
+      svg.appendChild(g);
+    });
+
+    var plane = document.createElementNS(svgNS, 'g');
+    plane.setAttribute('class', 'plane-icon');
+    plane.setAttribute('id', 'planeIcon');
+    var planePath = document.createElementNS(svgNS, 'path');
+    planePath.setAttribute('d', 'M0,-6 L2,-2 L9,1 L9,3 L2,1.5 L1,6 L3,7.5 L3,9 L0,8 L-3,9 L-3,7.5 L-1,6 L-2,1.5 L-9,3 L-9,1 L-2,-2 Z');
+    plane.appendChild(planePath);
+
+    var anim = document.createElementNS(svgNS, 'animateMotion');
+    anim.setAttribute('dur', FLIGHT_DUR + 's');
+    anim.setAttribute('repeatCount', 'indefinite');
+    anim.setAttribute('rotate', 'auto');
+    var mpath = document.createElementNS(svgNS, 'mpath');
+    mpath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#fullRoute');
+    mpath.setAttribute('href', '#fullRoute');
+    anim.appendChild(mpath);
+    plane.appendChild(anim);
+    svg.appendChild(plane);
+
+    // animateMotion moves the plane at a constant pace along total arc length by
+    // default, so legs of unequal geometric length take unequal *time*. Measure
+    // the real arc length up to each waypoint so the HUD's departure/destination
+    // switches exactly when the plane visually reaches that point, every leg.
+    var totalLen = path.getTotalLength();
+    var sampleCount = 900;
+    var lenAt = [0];
+    var searchStart = 0;
+    for(var wi = 1; wi < pts.length; wi++){
+      var bestLen = lenAt[wi - 1];
+      var bestDist = Infinity;
+      for(var s = searchStart; s <= sampleCount; s++){
+        var len = totalLen * s / sampleCount;
+        var pt = path.getPointAtLength(len);
+        var dx = pt.x - pts[wi].x;
+        var dy = pt.y - pts[wi].y;
+        var dist = dx * dx + dy * dy;
+        if(dist < bestDist){ bestDist = dist; bestLen = len; }
+      }
+      lenAt.push(bestLen);
+      searchStart = Math.floor((bestLen / totalLen) * sampleCount);
+    }
+
+    var legTimeMs = [];
+    var cumTimeMs = [0];
+    for(var li = 0; li < pts.length - 1; li++){
+      var legLen = Math.max(1, lenAt[li + 1] - lenAt[li]);
+      var t = (legLen / totalLen) * FLIGHT_DUR * 1000;
+      legTimeMs.push(t);
+      cumTimeMs.push(cumTimeMs[li] + t);
+    }
+    routeState.legTimeMs = legTimeMs;
+    routeState.cumTimeMs = cumTimeMs;
+
+    if(routeState.startTime === null){ routeState.startTime = performance.now(); }
+  }
+
+  function headingFor(p1, p2){
+    var deg = Math.atan2(p2.x - p1.x, p1.y - p2.y) * (180 / Math.PI);
+    deg = Math.round(deg);
+    if(deg < 0) deg += 360;
+    if(deg === 0) deg = 360;
+    return deg;
+  }
+
+  function currentLegIndex(elapsedMs){
+    var cum = routeState.cumTimeMs;
+    for(var i = 0; i < cum.length - 1; i++){
+      if(elapsedMs < cum[i + 1]) return i;
+    }
+    return cum.length - 2;
+  }
+
+  function updateHud(){
+    var planeIcon = document.getElementById('planeIcon');
+    var hud = document.getElementById('planeHud');
+    var pts = routeState.pts;
+
+    if(planeIcon && hud && pts.length > 1 && routeState.startTime !== null && routeState.cumTimeMs.length){
+      var totalMs = routeState.cumTimeMs[routeState.cumTimeMs.length - 1];
+      var elapsed = (performance.now() - routeState.startTime) % totalMs;
+      var legIndex = currentLegIndex(elapsed);
+
+      var dep = routeCodes[legIndex];
+      var dest = routeCodes[legIndex + 1];
+      var hdg = headingFor(pts[legIndex], pts[legIndex + 1]);
+      var alt = legAltitudes[legIndex] || 6500;
+
+      var r = planeIcon.getBoundingClientRect();
+      if(r.width || r.height){
+        hud.style.left = (r.left + r.width / 2) + 'px';
+        hud.style.top = (r.top - 10) + 'px';
+        hud.classList.add('visible');
+        hud.innerHTML =
+          '<div class="hud-route">' + dep + '\u2013' + dest + '</div>' +
+          '<div class="hud-row">ALT <span>' + alt.toLocaleString() + ' FT</span></div>' +
+          '<div class="hud-row">HDG <span>' + String(hdg).padStart(3, '0') + '\u00B0</span></div>' +
+          '<div class="hud-row">GS <span>' + legSpeed + ' KT</span></div>';
+      }
+    }
+    requestAnimationFrame(updateHud);
+  }
+
+  var resizeTimer;
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(buildRoute, 200);
+  });
+  window.addEventListener('load', buildRoute);
+  document.addEventListener('DOMContentLoaded', buildRoute);
+  requestAnimationFrame(updateHud);
+
+
+
+  var typeData = {
+    c172: {
+      name: "Cessna 172",
+      rows: [
+        ["Day Dual", "49.7 HR"],
+        ["Night Dual", "23.5 HR"],
+        ["Day PIC", "63.7 HR"],
+        ["Night PIC", "36.5 HR"]
+      ]
+    },
+    c72r: {
+      name: "Cessna 172RG (C72R)",
+      rows: [
+        ["Day Dual", "3.6 HR"]
+      ]
+    },
+    da42: {
+      name: "Diamond DA42",
+      rows: [
+        ["Day Dual", "5.0 HR"],
+        ["Night Dual", "2.3 HR"]
+      ]
+    }
+  };
+
+  var chips = document.querySelectorAll('.type-chip');
+  var detail = document.getElementById('typeDetail');
+
+  chips.forEach(function(chip){
+    chip.addEventListener('click', function(){
+      chips.forEach(function(c){ c.classList.remove('active'); });
+      chip.classList.add('active');
+
+      var data = typeData[chip.getAttribute('data-type')];
+      var html = '<div class="type-detail-name">' + data.name + '</div>';
+      data.rows.forEach(function(row){
+        html += '<div class="type-detail-row"><span>' + row[0] + '</span><span>' + row[1] + '</span></div>';
+      });
+      detail.innerHTML = html;
+    });
+  });
+</script>
+
+</body>
+</html>
