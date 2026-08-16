@@ -1,0 +1,13 @@
+{
+  "name": "abhinav-gyawali-aviation-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Abhinav Gyawali aviation pilot portfolio",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
